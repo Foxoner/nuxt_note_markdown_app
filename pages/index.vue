@@ -11,7 +11,7 @@
           :class="{'activeNote': index === activeNoteCardIndex}"
           v-for="(note, index) in filteredNotes" 
           :key="note.date" 
-          @click="activeNoteCardIndex = index"
+          @click="onPickCard(index)"
         >
           <p class="card-title truncate">{{ note.text.split('\n')[0] }}</p>
           <div class="card-info flex gap-2">
@@ -23,17 +23,22 @@
     </aside>
     <section class="w-[70%] ">
       <div class="section-nav w-full p-5 flex justify-between items-center">
-        <Icon class="icon" name="circum:edit" color="black" size="20px" />
+        <Icon @click="toggleEdit(activeNoteCardIndex)" class="icon" name="circum:edit" color="black" size="20px" />
         <div class="searchbar relative flex items-center">
           <input v-model="searchInput" class="rounded-md max-w-[150px] sm:max-w-[250px] sm: pl-8 pl-6 pr-2 py-1 border" type="text">
           <Icon class="icon absolute ml-1" name="circum:search" color="black" size="20px" />
         </div>
       </div>
-      <div class="note-body">
+      <div class="note-body ">
         <div v-if="activeNoteCardIndex != null" class="exist-note">
-          <p class="mx-auto bg-yellow-50 rounded-full w-fit px-2 py-1 my-3">{{  new Date(notes[activeNoteCardIndex].date).toLocaleString('en-GB', { timeZone: 'UTC' }) }}</p>
-          <!-- <textarea class="w-full rounded-lg outline-none p-5" v-model="notes[activeNoteCardIndex].text" placeholder="Write something..." ></textarea> -->
-          <div class="m-3 p-3" v-html="testFunc"></div>
+          <div class="note-preview" v-if="!isEditing[activeNoteCardIndex]">
+            <p class="mx-auto bg-yellow-50 rounded-full w-fit px-2 py-1 my-3">{{  new Date(notes[activeNoteCardIndex].date).toLocaleString('en-GB', { timeZone: 'UTC' }) }}</p>
+            <div class="m-3 p-3 overflow-y-auto" v-html="parseMarkedText"></div>
+          </div>
+          <div class="note-editing" v-else>
+            <p class="mx-auto bg-yellow-50 rounded-full w-fit px-2 py-1 my-3">{{  new Date(notes[activeNoteCardIndex].date).toLocaleString('en-GB', { timeZone: 'UTC' }) }}</p>
+            <textarea class="w-full rounded-lg outline-none p-5" v-model="notes[activeNoteCardIndex].text" @keypress.enter.exact.prevent="saveEditedNote(activeNoteCardIndex)" placeholder="Write something..." ></textarea>
+          </div>
         </div>
         <div v-else class="new-note">
           <textarea class="w-full rounded-lg outline-none p-5" v-model="newNote.text" @keypress.enter.exact.prevent="addNote" placeholder="Write something..." ></textarea>
@@ -74,9 +79,9 @@ import { marked } from 'marked';
   const isEditing = ref<boolean[]>([]);
   const activeNoteCardIndex = ref<number | null>(null)
   let searchInput = ref<string>('')
-  const test = ref('')
 
 
+  // Marked Functional
   marked.use({
     "async": false,
     "breaks": false,
@@ -88,44 +93,12 @@ import { marked } from 'marked';
     "tokenizer": null,
     "walkTokens": null
   })
-  const testFunc = computed(() => {
-    return marked.parse(`# Marked - Markdown Parser
-
-
-[Marked] lets you convert [Markdown] into HTML.  Markdown is a simple text format whose goal is to be very easy to read and write, even when not converted to HTML.  This demo page will let you type anything you like and see how it gets converted.  Live.  No more waiting around.
-
-How To Use The Demo
--------------------
-
-1. Type in stuff on the left.
-2. See the live updates on the right.
-
-That's it.  Pretty simple.  There's also a drop-down option above to switch between various views:
-
-- **Preview:**  A live display of the generated HTML as it would render in a browser.
-- **HTML Source:**  The generated HTML before your browser makes it pretty.
-- **Lexer Data:**  What [marked] uses internally, in case you like gory stuff like this.
-- **Quick Reference:**  A brief run-down of how to format things using markdown.
-
-Why Markdown?
--------------
-
-It's easy.  It's not overly bloated, unlike HTML.  Also, as the creator of [markdown] says,
-
-> The overriding design goal for Markdown's
-> formatting syntax is to make it as readable
-> as possible. The idea is that a
-> Markdown-formatted document should be
-> publishable as-is, as plain text, without
-> looking like it's been marked up with tags
-> or formatting instructions.
-
-Ready to start writing?  Either start changing stuff on the left or
-[clear everything](/demo/?text=) with a simple click.`)
+  const parseMarkedText = computed(() => {
+    if (activeNoteCardIndex.value != null) {
+      return marked.parse(notes.value[activeNoteCardIndex.value].text)
+    }
+    
   })
-
-  
-
 
   // Search Logic
   const searchNotes = (title: string): Note[] => {
@@ -136,28 +109,42 @@ Ready to start writing?  Either start changing stuff on the left or
       return searchNotes(searchInput.value);
     });
 
+  // Pick Card Logic
+  const onPickCard = (index: number): void => {
+    if (activeNoteCardIndex.value != null) {
+      isEditing.value[activeNoteCardIndex.value] = false;
+    }
+    activeNoteCardIndex.value = index;
+  }
+  
   // Main Notes Logic
   const loadNotes = async (): Promise<void> => {
     const savedNotes = await getNotes();
-    console.log(savedNotes)
     setTimeout(()=> {
       notes.value = savedNotes;
       editedNotes.value = savedNotes.slice();
       isEditing.value = savedNotes.map(() => false);
-      console.log(notes.value)
     }, 100)
     
   };
 
   onMounted(() => {
     loadNotes();
-    console.log(notes.value)
   });
+
+  const createNote = (): void => {
+    if (activeNoteCardIndex.value != null &&  isEditing.value[activeNoteCardIndex.value] ) {
+      saveEditedNote(activeNoteCardIndex.value)
+      isEditing.value[activeNoteCardIndex.value] = false;
+      activeNoteCardIndex.value = null;
+    }
+    activeNoteCardIndex.value = null;
+
+  }
 
   const addNote = () => {
     if (newNote.value.text.trim() !== '') {
       const curNoteDate = Date.now()
-      console.log(typeof curNoteDate)
       const newNoteItem = {
         text: newNote.value.text,
         date: curNoteDate
@@ -168,7 +155,6 @@ Ready to start writing?  Either start changing stuff on the left or
       saveNotesToIndexedDB();
       newNote.value = {text: '', date: Date.now()};
     }
-    console.log(notes.value)
   };
 
   const deleteNote = (index: number | null) => {
@@ -189,7 +175,7 @@ Ready to start writing?  Either start changing stuff on the left or
     }
   };
 
-  const saveEditedNote = (index: number | null) => {
+  const saveEditedNote = ( index: number | null ) => {
     if (index != null) {
       notes.value[index] = editedNotes.value[index];
       isEditing.value[index] = false;
@@ -197,12 +183,12 @@ Ready to start writing?  Either start changing stuff on the left or
     }
   };
 
-  const cancelEdit = (index: number | null) => {
-    if (index != null) {
-      editedNotes.value[index] = notes.value[index];
-      isEditing.value[index] = false;
-    }
-  };
+  // const cancelEdit = (index: number | null) => {
+  //   if (index != null) {
+  //     editedNotes.value[index] = notes.value[index];
+  //     isEditing.value[index] = false;
+  //   }
+  // };
 
   const saveNotesToIndexedDB = () => {
     saveNote(toRaw(notes.value));
