@@ -39,16 +39,6 @@ const saveNote = async (notes: Note[]) => {
   transaction.oncomplete = () => {
     db.close();
   };
-  // const request = store.add(note);
-  
-  // request.onsuccess = () => {
-  //   db.close();
-  // };
-
-  // request.onerror = (event) => {
-  //   console.error('Error adding note:', event.target.error);
-  // };
-
 };
 
 const getNotes = async () => {

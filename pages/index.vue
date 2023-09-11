@@ -2,7 +2,7 @@
   <div class="page-wrapper flex  min-h-screen ">
     <aside class="w-[30%] border-r-2 ">
       <div class="aside-nav w-full p-5">
-        <Icon class="icon mr-5" name="circum:circle-plus" color="black" size="20px" />
+        <Icon @click="createNote" class="icon mr-5" name="circum:circle-plus" color="black" size="20px" />
         <Icon @click="deleteNote(activeNoteCardIndex)" class="icon" name="circum:trash" color="black" size="20px" />
       </div>
       <div class="aside-body p-2">
@@ -46,29 +46,10 @@
       </div>
     </section>
   </div>
-  <!-- <div>
-    <textarea v-model="newNote" @keyup.enter="addNote" placeholder="Add a note..." ></textarea>
-    <ul>
-      <li v-for="(note, index) in notes" :key="index">
-        <template v-if="!isEditing[index]">
-          <span>{{ note }}</span>
-          <button @click="toggleEdit(index)">Edit</button>
-        </template>
-        <template v-else>
-          <textarea v-model="editedNotes[index]" rows="3"></textarea>
-          <button @click="saveEditedNote(index)">Save</button>
-          <button @click="cancelEdit(index)">Cancel</button>
-        </template>
-        <button @click="deleteNote(index)">Delete</button>
-      </li>
-    </ul>
-  </div> -->
 </template>
 
 <script lang="ts" setup>
-
-import { marked } from 'marked';
-// import { saveNote, getNotes } from '@/indexeddb.ts';
+  import { marked } from 'marked';
   import { Note } from '../types'
   
   
@@ -182,13 +163,6 @@ import { marked } from 'marked';
       saveNotesToIndexedDB();
     }
   };
-
-  // const cancelEdit = (index: number | null) => {
-  //   if (index != null) {
-  //     editedNotes.value[index] = notes.value[index];
-  //     isEditing.value[index] = false;
-  //   }
-  // };
 
   const saveNotesToIndexedDB = () => {
     saveNote(toRaw(notes.value));
